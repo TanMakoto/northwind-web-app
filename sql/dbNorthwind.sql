@@ -1,3 +1,7 @@
+-- Select or Create default database
+CREATE DATABASE IF NOT EXISTS `test`;
+USE `test`;
+
 -- Drop child tables first, then parent tables
 DROP TABLE IF EXISTS `Products`;
 DROP TABLE IF EXISTS `Categories`;
