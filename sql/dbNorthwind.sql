@@ -1,10 +1,8 @@
 -- ==========================================================
--- Northwind Database Schema & Seed Data (MySQL)
+-- Northwind Database Schema & Seed Data
+-- Compatible with TiDB Cloud, MySQL 5.7+, MySQL 8.0+, Railway & Render
 -- Tables: Categories, Suppliers, Products
 -- ==========================================================
-
-SET NAMES utf8mb4;
-SET FOREIGN_KEY_CHECKS = 0;
 
 -- --------------------------------------------------------
 -- Table: Categories
@@ -15,7 +13,7 @@ CREATE TABLE `Categories` (
   `CategoryName` VARCHAR(50) NOT NULL,
   `Description` TEXT DEFAULT NULL,
   `Picture` VARCHAR(255) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 INSERT INTO `Categories` (`CategoryID`, `CategoryName`, `Description`) VALUES
 (1, 'Beverages', 'Soft drinks, coffees, teas, beers, and ales'),
@@ -43,7 +41,7 @@ CREATE TABLE `Suppliers` (
   `Country` VARCHAR(50) DEFAULT NULL,
   `Phone` VARCHAR(30) DEFAULT NULL,
   `HomePage` VARCHAR(255) DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 INSERT INTO `Suppliers` (`SupplierID`, `CompanyName`, `ContactName`, `ContactTitle`, `City`, `Country`, `Phone`) VALUES
 (1, 'Exotic Liquids', 'Charlotte Cooper', 'Purchasing Manager', 'London', 'UK', '(171) 555-2222'),
@@ -76,7 +74,7 @@ CREATE TABLE `Products` (
   `UpdatedAt` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT `fk_products_categories` FOREIGN KEY (`CategoryID`) REFERENCES `Categories` (`CategoryID`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_products_suppliers` FOREIGN KEY (`SupplierID`) REFERENCES `Suppliers` (`SupplierID`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+);
 
 INSERT INTO `Products` (`ProductID`, `ProductName`, `SupplierID`, `CategoryID`, `QuantityPerUnit`, `UnitPrice`, `UnitsInStock`, `UnitsOnOrder`, `ReorderLevel`, `Discontinued`) VALUES
 (1, 'Chai', 1, 1, '10 boxes x 20 bags', 18.00, 39, 0, 10, 0),
@@ -104,5 +102,3 @@ INSERT INTO `Products` (`ProductID`, `ProductName`, `SupplierID`, `CategoryID`, 
 (23, 'Tunnbröd', 9, 5, '12 - 250 g pkgs.', 9.00, 61, 0, 25, 0),
 (24, 'Guaraná Fantástica', 10, 1, '12 - 355 ml cans', 4.50, 20, 0, 0, 1),
 (25, 'NuNuCa Nuß-Nougat-Creme', 10, 3, '20 - 450 g glasses', 14.00, 76, 0, 30, 0);
-
-SET FOREIGN_KEY_CHECKS = 1;
