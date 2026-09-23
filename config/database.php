@@ -25,19 +25,19 @@ class Database {
         // Load .env if exists
         $this->loadEnv();
 
-        // 1. Check Railway/Cloud URL (e.g. MYSQL_URL or DATABASE_URL: mysql://user:pass@host:port/dbname)
-        $dbUrl = getenv('MYSQL_URL') ?: getenv('DATABASE_URL');
+        // 1. Check Cloud URL (e.g. MYSQL_URL, DATABASE_URL, TIDB_URL)
+        $dbUrl = getenv('MYSQL_URL') ?: (getenv('DATABASE_URL') ?: getenv('CLEARDB_DATABASE_URL'));
         if (!empty($dbUrl)) {
             $parsed = parse_url($dbUrl);
             $this->host = $parsed['host'] ?? 'localhost';
             $this->port = $parsed['port'] ?? 3306;
             $this->username = $parsed['user'] ?? 'root';
-            $this->password = $parsed['pass'] ?? '';
-            $this->db_name = isset($parsed['path']) ? ltrim($parsed['path'], '/') : 'railway';
+            $this->password = isset($parsed['pass']) ? urldecode($parsed['pass']) : '';
+            $this->db_name = isset($parsed['path']) ? ltrim($parsed['path'], '/') : 'northwind';
             return;
         }
 
-        // 2. Check Railway Individual Environment Variables or Custom Env
+        // 2. Individual Environment Variables
         $this->host = getenv('MYSQLHOST') ?: (getenv('DB_HOST') ?: '127.0.0.1');
         $this->port = getenv('MYSQLPORT') ?: (getenv('DB_PORT') ?: '3306');
         $this->db_name = getenv('MYSQLDATABASE') ?: (getenv('DB_NAME') ?: 'dbnorthwind');
@@ -72,7 +72,8 @@ class Database {
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
                 PDO::ATTR_EMULATE_PREPARES => false,
-                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4"
+                PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4",
+                PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT => false
             ];
             $this->conn = new PDO($dsn, $this->username, $this->password, $options);
         } catch (PDOException $e) {
@@ -80,7 +81,7 @@ class Database {
             echo json_encode([
                 "success" => false,
                 "message" => "Database Connection Failed: " . $e->getMessage(),
-                "hint" => "Please ensure your MySQL database is active and credentials are correctly configured."
+                "hint" => "Please check DB_HOST, DB_NAME, DB_USER, DB_PASS or MYSQL_URL environment variables."
             ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
             exit();
         }
