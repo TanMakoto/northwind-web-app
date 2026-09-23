@@ -9,7 +9,9 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
     try {
-        $query = "SELECT CategoryID, CategoryName, Description FROM Categories ORDER BY CategoryName ASC";
+        $query = "SELECT i_CategoryID AS CategoryID, c_CategoryName AS CategoryName, c_Description AS Description 
+                  FROM tb_categories 
+                  ORDER BY c_CategoryName ASC";
         $stmt = $db->prepare($query);
         $stmt->execute();
         $categories = $stmt->fetchAll();

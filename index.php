@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Northwind Products Management | Cloud Web Application</title>
-  <meta name="description" content="Development and Deployment of Web App with PHP, MySQL and Railway PaaS (Northwind Database)">
+  <meta name="description" content="Development and Deployment of Web App with PHP, MySQL and Cloud PaaS (Northwind Database)">
   <link rel="stylesheet" href="assets/css/style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📦</text></svg>">
 </head>
@@ -17,11 +17,11 @@
         <div class="brand-icon">📦</div>
         <div>
           <h1 class="brand-title">Northwind Products Manager</h1>
-          <p class="brand-subtitle">Cloud Web Application &bull; PHP &amp; MySQL (Railway PaaS)</p>
+          <p class="brand-subtitle">Cloud Web Application &bull; PHP &amp; MySQL (dbNorthwind)</p>
         </div>
       </div>
       <div class="header-badges">
-        <span class="badge-pill online">Railway Cloud Live</span>
+        <span class="badge-pill online">Cloud Live</span>
         <span class="badge-pill">PHP 8.x + MySQL</span>
       </div>
     </header>
@@ -39,24 +39,24 @@
       <div class="glass-panel stat-card success">
         <div class="stat-icon">💰</div>
         <div class="stat-info">
-          <span class="stat-label">มูลค่าสินค้าคงคลัง (Inventory Value)</span>
-          <span class="stat-value" id="statInventoryValue">-</span>
+          <span class="stat-label">ราคาเฉลี่ยต่อหน่วย (Avg Price)</span>
+          <span class="stat-value" id="statAvgPrice">-</span>
         </div>
       </div>
 
       <div class="glass-panel stat-card warning">
-        <div class="stat-icon">⚠️</div>
+        <div class="stat-icon">🏷️</div>
         <div class="stat-info">
-          <span class="stat-label">สินค้าใกล้หมด (Low Stock)</span>
-          <span class="stat-value" id="statLowStock">-</span>
+          <span class="stat-label">หมวดหมู่ทั้งหมด (Categories)</span>
+          <span class="stat-value" id="statCategories">-</span>
         </div>
       </div>
 
       <div class="glass-panel stat-card danger">
-        <div class="stat-icon">🚫</div>
+        <div class="stat-icon">🏭</div>
         <div class="stat-info">
-          <span class="stat-label">สินค้าหมดสต็อก (Out of Stock)</span>
-          <span class="stat-value" id="statOutOfStock">-</span>
+          <span class="stat-label">ผู้จัดจำหน่าย (Suppliers)</span>
+          <span class="stat-value" id="statSuppliers">-</span>
         </div>
       </div>
     </section>
@@ -83,21 +83,11 @@
           <option value="">ผู้จำหน่ายทั้งหมด (All Suppliers)</option>
         </select>
 
-        <select id="filterStatus" class="custom-select">
-          <option value="all">สถานะสินค้าทั้งหมด</option>
-          <option value="in_stock">เฉพาะที่มีสินค้า (In Stock)</option>
-          <option value="low_stock">เฉพาะสินค้าใกล้หมด (Low Stock)</option>
-          <option value="out_of_stock">เฉพาะสินค้าหมด (Out of Stock)</option>
-          <option value="discontinued">เฉพาะยกเลิกจำหน่าย (Discontinued)</option>
-        </select>
-
         <select id="filterSort" class="custom-select">
           <option value="ProductID:DESC">รหัสสินค้า: ล่าสุดก่อน</option>
           <option value="ProductID:ASC">รหัสสินค้า: แรกสุดก่อน</option>
           <option value="UnitPrice:ASC">ราคา: น้อยไปมาก</option>
           <option value="UnitPrice:DESC">ราคา: มากไปน้อย</option>
-          <option value="UnitsInStock:ASC">จำนวนสต็อก: น้อยไปมาก</option>
-          <option value="UnitsInStock:DESC">จำนวนสต็อก: มากไปน้อย</option>
           <option value="ProductName:ASC">ชื่อสินค้า: A-Z</option>
         </select>
       </div>
@@ -110,11 +100,11 @@
           <thead>
             <tr>
               <th style="width: 70px;">ID</th>
-              <th>ชื่อสินค้า / ขนาดบรรจุ</th>
-              <th>หมวดหมู่</th>
-              <th>ผู้จัดจำหน่าย</th>
-              <th>ราคาต่อหน่วย</th>
-              <th>สถานะสต็อก</th>
+              <th>ชื่อสินค้า (Product Name)</th>
+              <th>ขนาดบรรจุ (Unit)</th>
+              <th>หมวดหมู่ (Category)</th>
+              <th>ผู้จัดจำหน่าย (Supplier)</th>
+              <th>ราคาต่อหน่วย (Price)</th>
               <th style="width: 110px; text-align: center;">จัดการ</th>
             </tr>
           </thead>
@@ -176,45 +166,16 @@
 
             <!-- Quantity Per Unit -->
             <div class="form-group full-width">
-              <label class="form-label" for="prodQuantityPerUnit">ขนาดบรรจุต่อหน่วย (Quantity Per Unit)</label>
-              <input type="text" id="prodQuantityPerUnit" class="form-control" placeholder="เช่น 24 - 12 oz bottles, 10 boxes">
+              <label class="form-label" for="prodQuantityPerUnit">ขนาดบรรจุต่อหน่วย (Unit / Packaging)</label>
+              <input type="text" id="prodQuantityPerUnit" class="form-control" placeholder="เช่น 24 - 12 oz bottles, 10 boxes x 20 bags">
               <span id="errProdQuantityPerUnit" class="form-error-msg"></span>
             </div>
 
             <!-- Unit Price -->
-            <div class="form-group">
-              <label class="form-label" for="prodUnitPrice">ราคาต่อหน่วย ($ Unit Price) <span class="required">*</span></label>
+            <div class="form-group full-width">
+              <label class="form-label" for="prodUnitPrice">ราคาต่อหน่วย ($ Price) <span class="required">*</span></label>
               <input type="number" id="prodUnitPrice" class="form-control" step="0.01" min="0" placeholder="0.00" required>
               <span id="errProdUnitPrice" class="form-error-msg"></span>
-            </div>
-
-            <!-- Units in Stock -->
-            <div class="form-group">
-              <label class="form-label" for="prodUnitsInStock">จำนวนในสต็อก (Units In Stock)</label>
-              <input type="number" id="prodUnitsInStock" class="form-control" min="0" value="0">
-              <span id="errProdUnitsInStock" class="form-error-msg"></span>
-            </div>
-
-            <!-- Units on Order -->
-            <div class="form-group">
-              <label class="form-label" for="prodUnitsOnOrder">จำนวนที่กำลังสั่งซื้อ (Units On Order)</label>
-              <input type="number" id="prodUnitsOnOrder" class="form-control" min="0" value="0">
-              <span id="errProdUnitsOnOrder" class="form-error-msg"></span>
-            </div>
-
-            <!-- Reorder Level -->
-            <div class="form-group">
-              <label class="form-label" for="prodReorderLevel">จุดสั่งซื้อซ้ำ (Reorder Level)</label>
-              <input type="number" id="prodReorderLevel" class="form-control" min="0" value="0">
-              <span id="errProdReorderLevel" class="form-error-msg"></span>
-            </div>
-
-            <!-- Discontinued Checkbox -->
-            <div class="form-group full-width">
-              <label class="checkbox-label">
-                <input type="checkbox" id="prodDiscontinued">
-                <span>ยกเลิกจำหน่ายสินค้านี้แล้ว (Discontinued)</span>
-              </label>
             </div>
           </div>
         </div>

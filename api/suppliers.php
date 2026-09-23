@@ -9,7 +9,9 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 if ($method === 'GET') {
     try {
-        $query = "SELECT SupplierID, CompanyName, ContactName, City, Country, Phone FROM Suppliers ORDER BY CompanyName ASC";
+        $query = "SELECT i_SupplierID AS SupplierID, c_SupplierName AS CompanyName, c_ContactName AS ContactName, c_City AS City, c_Country AS Country, c_Phone AS Phone 
+                  FROM tb_suppliers 
+                  ORDER BY c_SupplierName ASC";
         $stmt = $db->prepare($query);
         $stmt->execute();
         $suppliers = $stmt->fetchAll();

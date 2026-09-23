@@ -34,11 +34,19 @@ function handleGet($db) {
         // 1. Single Product by ID
         if (isset($_GET['id']) && is_numeric($_GET['id'])) {
             $id = intval($_GET['id']);
-            $query = "SELECT p.*, c.CategoryName, s.CompanyName as SupplierName 
-                      FROM Products p 
-                      LEFT JOIN Categories c ON p.CategoryID = c.CategoryID 
-                      LEFT JOIN Suppliers s ON p.SupplierID = s.SupplierID 
-                      WHERE p.ProductID = :id LIMIT 1";
+            $query = "SELECT 
+                        p.i_ProductID AS ProductID,
+                        p.c_ProductName AS ProductName,
+                        p.i_SupplierID AS SupplierID,
+                        p.i_CategoryID AS CategoryID,
+                        p.c_Unit AS QuantityPerUnit,
+                        p.i_Price AS UnitPrice,
+                        c.c_CategoryName AS CategoryName, 
+                        s.c_SupplierName AS SupplierName 
+                      FROM tb_products p 
+                      LEFT JOIN tb_categories c ON p.i_CategoryID = c.i_CategoryID 
+                      LEFT JOIN tb_suppliers s ON p.i_SupplierID = s.i_SupplierID 
+                      WHERE p.i_ProductID = :id LIMIT 1";
             $stmt = $db->prepare($query);
             $stmt->bindParam(':id', $id, PDO::PARAM_INT);
             $stmt->execute();
@@ -57,12 +65,11 @@ function handleGet($db) {
         if (isset($_GET['stats']) && $_GET['stats'] === 'true') {
             $statsQuery = "SELECT 
                 COUNT(*) AS total_products,
-                COALESCE(SUM(UnitsInStock), 0) AS total_units_stock,
-                COALESCE(SUM(UnitPrice * UnitsInStock), 0) AS total_inventory_value,
-                SUM(CASE WHEN UnitsInStock = 0 THEN 1 ELSE 0 END) AS out_of_stock_count,
-                SUM(CASE WHEN UnitsInStock > 0 AND UnitsInStock <= ReorderLevel THEN 1 ELSE 0 END) AS low_stock_count,
-                SUM(CASE WHEN Discontinued = 1 THEN 1 ELSE 0 END) AS discontinued_count
-            FROM Products";
+                COALESCE(AVG(i_Price), 0) AS avg_price,
+                COALESCE(SUM(i_Price), 0) AS total_inventory_value,
+                COUNT(DISTINCT i_CategoryID) AS total_categories,
+                COUNT(DISTINCT i_SupplierID) AS total_suppliers
+            FROM tb_products";
             $statsStmt = $db->query($statsQuery);
             $stats = $statsStmt->fetch();
 
@@ -74,7 +81,6 @@ function handleGet($db) {
         $search = trim($_GET['search'] ?? '');
         $categoryId = isset($_GET['category_id']) && $_GET['category_id'] !== '' ? intval($_GET['category_id']) : null;
         $supplierId = isset($_GET['supplier_id']) && $_GET['supplier_id'] !== '' ? intval($_GET['supplier_id']) : null;
-        $status = $_GET['status'] ?? 'all';
         $page = max(1, intval($_GET['page'] ?? 1));
         $limit = max(1, min(100, intval($_GET['limit'] ?? 10)));
         $offset = ($page - 1) * $limit;
@@ -83,50 +89,39 @@ function handleGet($db) {
         $order = strtoupper($_GET['order'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
 
         $allowedSortCols = [
-            'ProductID' => 'p.ProductID',
-            'ProductName' => 'p.ProductName',
-            'UnitPrice' => 'p.UnitPrice',
-            'UnitsInStock' => 'p.UnitsInStock',
-            'CategoryName' => 'c.CategoryName',
-            'SupplierName' => 's.CompanyName'
+            'ProductID' => 'p.i_ProductID',
+            'ProductName' => 'p.c_ProductName',
+            'UnitPrice' => 'p.i_Price',
+            'CategoryName' => 'c.c_CategoryName',
+            'SupplierName' => 's.c_SupplierName'
         ];
-        $sortColumn = $allowedSortCols[$sortBy] ?? 'p.ProductID';
+        $sortColumn = $allowedSortCols[$sortBy] ?? 'p.i_ProductID';
 
         $conditions = ["1=1"];
         $params = [];
 
         if (!empty($search)) {
-            $conditions[] = "(p.ProductName LIKE :search OR c.CategoryName LIKE :search OR s.CompanyName LIKE :search OR p.QuantityPerUnit LIKE :search)";
+            $conditions[] = "(p.c_ProductName LIKE :search OR c.c_CategoryName LIKE :search OR s.c_SupplierName LIKE :search OR p.c_Unit LIKE :search)";
             $params[':search'] = "%{$search}%";
         }
 
         if ($categoryId !== null) {
-            $conditions[] = "p.CategoryID = :catId";
+            $conditions[] = "p.i_CategoryID = :catId";
             $params[':catId'] = $categoryId;
         }
 
         if ($supplierId !== null) {
-            $conditions[] = "p.SupplierID = :supId";
+            $conditions[] = "p.i_SupplierID = :supId";
             $params[':supId'] = $supplierId;
-        }
-
-        if ($status === 'in_stock') {
-            $conditions[] = "p.UnitsInStock > 0 AND p.Discontinued = 0";
-        } elseif ($status === 'out_of_stock') {
-            $conditions[] = "p.UnitsInStock = 0";
-        } elseif ($status === 'low_stock') {
-            $conditions[] = "p.UnitsInStock > 0 AND p.UnitsInStock <= p.ReorderLevel";
-        } elseif ($status === 'discontinued') {
-            $conditions[] = "p.Discontinued = 1";
         }
 
         $whereClause = implode(" AND ", $conditions);
 
         // Count total matching records
         $countQuery = "SELECT COUNT(*) as total 
-                       FROM Products p 
-                       LEFT JOIN Categories c ON p.CategoryID = c.CategoryID 
-                       LEFT JOIN Suppliers s ON p.SupplierID = s.SupplierID 
+                       FROM tb_products p 
+                       LEFT JOIN tb_categories c ON p.i_CategoryID = c.i_CategoryID 
+                       LEFT JOIN tb_suppliers s ON p.i_SupplierID = s.i_SupplierID 
                        WHERE {$whereClause}";
         $countStmt = $db->prepare($countQuery);
         foreach ($params as $key => $val) {
@@ -137,10 +132,18 @@ function handleGet($db) {
         $totalPages = ceil($totalRecords / $limit);
 
         // Fetch paginated data
-        $dataQuery = "SELECT p.*, c.CategoryName, s.CompanyName as SupplierName 
-                      FROM Products p 
-                      LEFT JOIN Categories c ON p.CategoryID = c.CategoryID 
-                      LEFT JOIN Suppliers s ON p.SupplierID = s.SupplierID 
+        $dataQuery = "SELECT 
+                        p.i_ProductID AS ProductID,
+                        p.c_ProductName AS ProductName,
+                        p.i_SupplierID AS SupplierID,
+                        p.i_CategoryID AS CategoryID,
+                        p.c_Unit AS QuantityPerUnit,
+                        p.i_Price AS UnitPrice,
+                        c.c_CategoryName AS CategoryName, 
+                        s.c_SupplierName AS SupplierName 
+                      FROM tb_products p 
+                      LEFT JOIN tb_categories c ON p.i_CategoryID = c.i_CategoryID 
+                      LEFT JOIN tb_suppliers s ON p.i_SupplierID = s.i_SupplierID 
                       WHERE {$whereClause} 
                       ORDER BY {$sortColumn} {$order} 
                       LIMIT :limit OFFSET :offset";
@@ -187,19 +190,15 @@ function handlePost($db) {
     }
 
     try {
-        $query = "INSERT INTO Products (ProductName, SupplierID, CategoryID, QuantityPerUnit, UnitPrice, UnitsInStock, UnitsOnOrder, ReorderLevel, Discontinued) 
-                  VALUES (:productName, :supplierId, :categoryId, :quantityPerUnit, :unitPrice, :unitsInStock, :unitsOnOrder, :reorderLevel, :discontinued)";
+        $query = "INSERT INTO tb_products (c_ProductName, i_SupplierID, i_CategoryID, c_Unit, i_Price) 
+                  VALUES (:productName, :supplierId, :categoryId, :unit, :price)";
         
         $stmt = $db->prepare($query);
         $stmt->bindValue(':productName', trim($data['ProductName']));
         $stmt->bindValue(':supplierId', !empty($data['SupplierID']) ? intval($data['SupplierID']) : null, PDO::PARAM_INT);
         $stmt->bindValue(':categoryId', !empty($data['CategoryID']) ? intval($data['CategoryID']) : null, PDO::PARAM_INT);
-        $stmt->bindValue(':quantityPerUnit', trim($data['QuantityPerUnit'] ?? ''));
-        $stmt->bindValue(':unitPrice', floatval($data['UnitPrice']));
-        $stmt->bindValue(':unitsInStock', intval($data['UnitsInStock'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':unitsOnOrder', intval($data['UnitsOnOrder'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':reorderLevel', intval($data['ReorderLevel'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':discontinued', !empty($data['Discontinued']) ? 1 : 0, PDO::PARAM_INT);
+        $stmt->bindValue(':unit', trim($data['QuantityPerUnit'] ?? ''));
+        $stmt->bindValue(':price', floatval($data['UnitPrice']));
 
         if ($stmt->execute()) {
             $newId = $db->lastInsertId();
@@ -243,7 +242,7 @@ function handlePut($db) {
 
     try {
         // Check if exists
-        $checkStmt = $db->prepare("SELECT ProductID FROM Products WHERE ProductID = :id");
+        $checkStmt = $db->prepare("SELECT i_ProductID FROM tb_products WHERE i_ProductID = :id");
         $checkStmt->execute([':id' => $productId]);
         if (!$checkStmt->fetch()) {
             http_response_code(404);
@@ -251,28 +250,20 @@ function handlePut($db) {
             return;
         }
 
-        $query = "UPDATE Products SET 
-                    ProductName = :productName,
-                    SupplierID = :supplierId,
-                    CategoryID = :categoryId,
-                    QuantityPerUnit = :quantityPerUnit,
-                    UnitPrice = :unitPrice,
-                    UnitsInStock = :unitsInStock,
-                    UnitsOnOrder = :unitsOnOrder,
-                    ReorderLevel = :reorderLevel,
-                    Discontinued = :discontinued
-                  WHERE ProductID = :productId";
+        $query = "UPDATE tb_products SET 
+                    c_ProductName = :productName,
+                    i_SupplierID = :supplierId,
+                    i_CategoryID = :categoryId,
+                    c_Unit = :unit,
+                    i_Price = :price
+                  WHERE i_ProductID = :productId";
 
         $stmt = $db->prepare($query);
         $stmt->bindValue(':productName', trim($data['ProductName']));
         $stmt->bindValue(':supplierId', !empty($data['SupplierID']) ? intval($data['SupplierID']) : null, PDO::PARAM_INT);
         $stmt->bindValue(':categoryId', !empty($data['CategoryID']) ? intval($data['CategoryID']) : null, PDO::PARAM_INT);
-        $stmt->bindValue(':quantityPerUnit', trim($data['QuantityPerUnit'] ?? ''));
-        $stmt->bindValue(':unitPrice', floatval($data['UnitPrice']));
-        $stmt->bindValue(':unitsInStock', intval($data['UnitsInStock'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':unitsOnOrder', intval($data['UnitsOnOrder'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':reorderLevel', intval($data['ReorderLevel'] ?? 0), PDO::PARAM_INT);
-        $stmt->bindValue(':discontinued', !empty($data['Discontinued']) ? 1 : 0, PDO::PARAM_INT);
+        $stmt->bindValue(':unit', trim($data['QuantityPerUnit'] ?? ''));
+        $stmt->bindValue(':price', floatval($data['UnitPrice']));
         $stmt->bindValue(':productId', $productId, PDO::PARAM_INT);
 
         if ($stmt->execute()) {
@@ -306,8 +297,8 @@ function handleDelete($db) {
     $productId = intval($id);
 
     try {
-        // Fetch name first for informative response
-        $fetchStmt = $db->prepare("SELECT ProductName FROM Products WHERE ProductID = :id");
+        // Fetch name first
+        $fetchStmt = $db->prepare("SELECT c_ProductName FROM tb_products WHERE i_ProductID = :id");
         $fetchStmt->execute([':id' => $productId]);
         $product = $fetchStmt->fetch();
 
@@ -317,14 +308,14 @@ function handleDelete($db) {
             return;
         }
 
-        $query = "DELETE FROM Products WHERE ProductID = :id";
+        $query = "DELETE FROM tb_products WHERE i_ProductID = :id";
         $stmt = $db->prepare($query);
         $stmt->bindParam(':id', $productId, PDO::PARAM_INT);
 
         if ($stmt->execute()) {
             echo json_encode([
                 "success" => true,
-                "message" => "ลบสินค้า '{$product['ProductName']}' (ID: #{$productId}) สำเร็จแล้ว!"
+                "message" => "ลบสินค้า '{$product['c_ProductName']}' (ID: #{$productId}) สำเร็จแล้ว!"
             ], JSON_UNESCAPED_UNICODE);
         } else {
             http_response_code(500);
@@ -352,18 +343,6 @@ function validateProductData($data) {
         $errors['UnitPrice'] = 'กรุณาระบุราคาสินค้า (Unit Price)';
     } elseif (!is_numeric($data['UnitPrice']) || floatval($data['UnitPrice']) < 0) {
         $errors['UnitPrice'] = 'ราคาสินค้าต้องเป็นตัวเลขและมากกว่าหรือเท่ากับ 0';
-    }
-
-    if (isset($data['UnitsInStock']) && trim((string)$data['UnitsInStock']) !== '') {
-        if (!is_numeric($data['UnitsInStock']) || intval($data['UnitsInStock']) < 0) {
-            $errors['UnitsInStock'] = 'จำนวนสินค้าคงคลังต้องเป็นจำนวนเต็มบวก';
-        }
-    }
-
-    if (isset($data['ReorderLevel']) && trim((string)$data['ReorderLevel']) !== '') {
-        if (!is_numeric($data['ReorderLevel']) || intval($data['ReorderLevel']) < 0) {
-            $errors['ReorderLevel'] = 'จุดสั่งซื้อซ้ำต้องเป็นจำนวนเต็มบวก';
-        }
     }
 
     return $errors;

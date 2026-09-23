@@ -22,7 +22,6 @@ const App = {
       search: '',
       categoryId: '',
       supplierId: '',
-      status: 'all',
       sortBy: 'ProductID',
       order: 'DESC'
     },
@@ -63,12 +62,6 @@ const App = {
 
     document.getElementById('filterSupplier')?.addEventListener('change', (e) => {
       this.state.filters.supplierId = e.target.value;
-      this.state.pagination.currentPage = 1;
-      this.loadProducts();
-    });
-
-    document.getElementById('filterStatus')?.addEventListener('change', (e) => {
-      this.state.filters.status = e.target.value;
       this.state.pagination.currentPage = 1;
       this.loadProducts();
     });
@@ -172,14 +165,13 @@ const App = {
 
   async loadProducts() {
     this.renderLoading(true);
-    const { search, categoryId, supplierId, status, sortBy, order } = this.state.filters;
+    const { search, categoryId, supplierId, sortBy, order } = this.state.filters;
     const { currentPage, perPage } = this.state.pagination;
 
     const params = new URLSearchParams({
       search,
       category_id: categoryId,
       supplier_id: supplierId,
-      status,
       sort_by: sortBy,
       order,
       page: currentPage,
@@ -208,14 +200,14 @@ const App = {
 
   // Rendering
   renderStats() {
-    const { total_products, total_inventory_value, out_of_stock_count, low_stock_count } = this.state.stats;
+    const { total_products, avg_price, total_categories, total_suppliers } = this.state.stats;
     const formatNumber = (num) => Number(num || 0).toLocaleString();
     const formatCurrency = (num) => '$' + Number(num || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     document.getElementById('statTotalProducts').innerText = formatNumber(total_products);
-    document.getElementById('statInventoryValue').innerText = formatCurrency(total_inventory_value);
-    document.getElementById('statLowStock').innerText = formatNumber(low_stock_count);
-    document.getElementById('statOutOfStock').innerText = formatNumber(out_of_stock_count);
+    document.getElementById('statAvgPrice').innerText = formatCurrency(avg_price);
+    document.getElementById('statCategories').innerText = formatNumber(total_categories);
+    document.getElementById('statSuppliers').innerText = formatNumber(total_suppliers);
   },
 
   renderCategoryOptions() {
@@ -271,27 +263,15 @@ const App = {
 
     tbody.innerHTML = this.state.products.map(p => {
       const price = '$' + parseFloat(p.UnitPrice).toFixed(2);
-      const stock = parseInt(p.UnitsInStock, 10);
-      const reorder = parseInt(p.ReorderLevel, 10);
-      const isDiscontinued = parseInt(p.Discontinued, 10) === 1;
-
-      let stockBadge = '';
-      if (isDiscontinued) {
-        stockBadge = '<span class="badge badge-discontinued">ยกเลิกจำหน่าย</span>';
-      } else if (stock === 0) {
-        stockBadge = '<span class="badge badge-out-stock">สินค้าหมด (0)</span>';
-      } else if (stock <= reorder) {
-        stockBadge = `<span class="badge badge-low-stock">เหลือน้อย (${stock})</span>`;
-      } else {
-        stockBadge = `<span class="badge badge-in-stock">มีสินค้า (${stock})</span>`;
-      }
 
       return `
         <tr>
           <td><span style="font-weight: 700; color: var(--text-muted);">#${p.ProductID}</span></td>
           <td>
             <div style="font-weight: 600; color: var(--text-main); font-size: 0.95rem;">${this.escapeHtml(p.ProductName)}</div>
-            <div style="font-size: 0.78rem; color: var(--text-sub);">${this.escapeHtml(p.QuantityPerUnit || '-')}</div>
+          </td>
+          <td>
+            <span style="font-size: 0.82rem; color: var(--text-sub);">${this.escapeHtml(p.QuantityPerUnit || '-')}</span>
           </td>
           <td>
             <span class="badge badge-category">${this.escapeHtml(p.CategoryName || 'Unassigned')}</span>
@@ -302,7 +282,6 @@ const App = {
           <td>
             <span style="font-weight: 700; color: #34D399; font-size: 1rem;">${price}</span>
           </td>
-          <td>${stockBadge}</td>
           <td>
             <div class="table-actions">
               <button class="btn btn-icon btn-action-edit" title="แก้ไขสินค้า" onclick="App.openProductModal(${p.ProductID})">
@@ -410,10 +389,6 @@ const App = {
           document.getElementById('prodSupplier').value = p.SupplierID || '';
           document.getElementById('prodQuantityPerUnit').value = p.QuantityPerUnit || '';
           document.getElementById('prodUnitPrice').value = p.UnitPrice;
-          document.getElementById('prodUnitsInStock').value = p.UnitsInStock;
-          document.getElementById('prodUnitsOnOrder').value = p.UnitsOnOrder;
-          document.getElementById('prodReorderLevel').value = p.ReorderLevel;
-          document.getElementById('prodDiscontinued').checked = parseInt(p.Discontinued, 10) === 1;
         }
       } catch (err) {
         Toast.error('ข้อผิดพลาด', 'ไม่สามารถโหลดข้อมูลสินค้าที่ต้องการแก้ไขได้');
@@ -455,11 +430,7 @@ const App = {
       CategoryID: document.getElementById('prodCategory').value || null,
       SupplierID: document.getElementById('prodSupplier').value || null,
       QuantityPerUnit: document.getElementById('prodQuantityPerUnit').value.trim(),
-      UnitPrice: document.getElementById('prodUnitPrice').value,
-      UnitsInStock: document.getElementById('prodUnitsInStock').value,
-      UnitsOnOrder: document.getElementById('prodUnitsOnOrder').value,
-      ReorderLevel: document.getElementById('prodReorderLevel').value,
-      Discontinued: document.getElementById('prodDiscontinued').checked ? 1 : 0
+      UnitPrice: document.getElementById('prodUnitPrice').value
     };
 
     // Client-side validation
