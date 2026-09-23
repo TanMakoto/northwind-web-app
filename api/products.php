@@ -101,8 +101,11 @@ function handleGet($db) {
         $params = [];
 
         if (!empty($search)) {
-            $conditions[] = "(p.c_ProductName LIKE :search OR c.c_CategoryName LIKE :search OR s.c_SupplierName LIKE :search OR p.c_Unit LIKE :search)";
-            $params[':search'] = "%{$search}%";
+            $conditions[] = "(p.c_ProductName LIKE :search1 OR c.c_CategoryName LIKE :search2 OR s.c_SupplierName LIKE :search3 OR p.c_Unit LIKE :search4)";
+            $params[':search1'] = "%{$search}%";
+            $params[':search2'] = "%{$search}%";
+            $params[':search3'] = "%{$search}%";
+            $params[':search4'] = "%{$search}%";
         }
 
         if ($categoryId !== null) {
