@@ -1,13 +1,11 @@
--- ==========================================================
--- Northwind Database Schema & Seed Data
--- Compatible with TiDB Cloud, MySQL 5.7+, MySQL 8.0+, Railway & Render
--- Tables: Categories, Suppliers, Products
--- ==========================================================
+-- Drop child tables first, then parent tables
+DROP TABLE IF EXISTS `Products`;
+DROP TABLE IF EXISTS `Categories`;
+DROP TABLE IF EXISTS `Suppliers`;
 
 -- --------------------------------------------------------
 -- Table: Categories
 -- --------------------------------------------------------
-DROP TABLE IF EXISTS `Categories`;
 CREATE TABLE `Categories` (
   `CategoryID` INT AUTO_INCREMENT PRIMARY KEY,
   `CategoryName` VARCHAR(50) NOT NULL,
@@ -28,7 +26,6 @@ INSERT INTO `Categories` (`CategoryID`, `CategoryName`, `Description`) VALUES
 -- --------------------------------------------------------
 -- Table: Suppliers
 -- --------------------------------------------------------
-DROP TABLE IF EXISTS `Suppliers`;
 CREATE TABLE `Suppliers` (
   `SupplierID` INT AUTO_INCREMENT PRIMARY KEY,
   `CompanyName` VARCHAR(100) NOT NULL,
@@ -58,7 +55,6 @@ INSERT INTO `Suppliers` (`SupplierID`, `CompanyName`, `ContactName`, `ContactTit
 -- --------------------------------------------------------
 -- Table: Products
 -- --------------------------------------------------------
-DROP TABLE IF EXISTS `Products`;
 CREATE TABLE `Products` (
   `ProductID` INT AUTO_INCREMENT PRIMARY KEY,
   `ProductName` VARCHAR(100) NOT NULL,
